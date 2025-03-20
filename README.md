@@ -1,6 +1,6 @@
 # GraphCheck: Multi-Path Fact-Checking with Entity-Relationship Graphs
 
-This repository contains the source code for **GraphCheck** (Jeon et al., 2025).
+This repository contains the source code for [**GraphCheck** (Jeon et al., 2025)](https://arxiv.org/abs/2502.20785).
 
 ## **Setup Virtual Environment**
 
@@ -24,9 +24,9 @@ Before running experiments, prepare the BM25 index using:
 sh prepare_hover.sh
 ```
 
-### **Running Direct Verification**
+### **Running Direct**
 
-To run Direct verification on the **dev set**:
+To run Direct on the **dev set**:
 
 ```bash
 python direct.py \
@@ -116,7 +116,7 @@ sh prepare_ex-fever.sh
 
 ### **Running Experiments on Test Set**
 
-To run **Direct verification**:
+To run **Direct**:
 
 ```bash
 python direct.py \
