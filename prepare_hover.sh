@@ -35,3 +35,4 @@ python -m pyserini.index.lucene \
 
 rm ./corpus/hotpotqa_corpus.db
 rm -r ./corpus/enwiki-20171001-pages-meta-current-withlinks-abstracts
+cd ../..
