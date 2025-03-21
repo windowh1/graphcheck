@@ -22,3 +22,4 @@ python -m pyserini.index.lucene \
     --storePositions --storeDocvectors --storeRaw
 
 rm ./corpus/wiki_wo_links.db
+cd ../..
