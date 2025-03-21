@@ -283,6 +283,7 @@ class ConstructModel(GPT):
             input_list = [sample for sample in input_list if sample["index"] not in existing_indices]
         
         else:
+            remaining_count = total_count
             os.makedirs(os.path.dirname(graph_path), exist_ok=True)
             logger.info(f"Constructing graphs for {len(input_list)} samples...")
         
