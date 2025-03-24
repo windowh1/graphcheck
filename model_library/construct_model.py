@@ -270,7 +270,7 @@ class ConstructModel(GPT):
             with open(graph_path, "r") as f:
                 graph_list = json.load(f)
                 
-            input_indices = {sample["index"] for sample in input_list}
+        input_indices = {sample["index"] for sample in input_list}
             
         existing_count = len([sample for sample in graph_list if sample["index"] in input_indices])
         total_count = len(input_list)
