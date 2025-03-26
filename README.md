@@ -1,6 +1,8 @@
 # GraphCheck: Multi-Path Fact-Checking with Entity-Relationship Graphs
 
-This repository contains the source code for [**GraphCheck** (Jeon et al., 2025)](https://arxiv.org/abs/2502.20785).
+GraphCheck is a fact-checking framework that leverages entity-relation graphs to perform multi-path reasoning for claim verification. This repository includes code, data, and instructions to reproduce the results from our paper, [GraphCheck: Multi-Path Fact-Checking with Entity-Relationship Graphs (Jeon et al., 2025)](https://arxiv.org/abs/2502.20785)
+
+This repository contains the source code for .
 
 ## **Setup Virtual Environment**
 
