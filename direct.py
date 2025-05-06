@@ -63,8 +63,7 @@ class Direct:
         
         self.setting = args.setting
         if self.setting.startswith("open-book"):
-            retriever_corpus_dir = f"../erg/datasets/{args.dataset}/corpus/index"
-            #retriever_corpus_dir = f"./datasets/{args.dataset}/corpus/index"
+            retriever_corpus_dir = f"./datasets/{args.dataset}/corpus/index"
             self.retriever = PyseriniRetriever(retriever_corpus_dir, use_bm25=True, k1=0.9, b=0.4)
             self.direct_top_k = 5
         else:
