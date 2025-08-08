@@ -1,9 +1,10 @@
 import logging
 import random
 import torch
-from typing import List, Optional
+from typing import *
 
 logger = logging.getLogger(__name__)
+random.seed(26)
 
 
 class FlanT5:
@@ -29,23 +30,6 @@ class FlanT5:
         answer = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
         return answer
-    
-    
-    def batch_generate(
-        self, 
-        batch_input: List[str], 
-        **generator_args
-    ) -> List[str]:
-        tokenized = self.tokenizer(batch_input, return_tensors="pt", padding=True, truncation=False)
-        input_ids = tokenized.input_ids.to(self.model.device)
-        attention_mask = tokenized.attention_mask.to(self.model.device)
-        
-        with torch.no_grad():
-            generated_ids = self.model.generate(input_ids, attention_mask=attention_mask, do_sample=False, **generator_args)
-        batch_answer = [
-            text.strip() for text in self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        ]
-        return batch_answer
     
     
 class BaseModel(FlanT5):
@@ -74,7 +58,7 @@ class BaseModel(FlanT5):
     def infill(
         self, 
         query: str, 
-        evidence: Optional[str]
+        evidence: Optional[str] = None
     ) -> str:
         
         prompt = self.get_infilling_prompt(query, evidence)
@@ -84,30 +68,6 @@ class BaseModel(FlanT5):
             answer = answer[len("blank is "):]
         
         return answer
-    
-    
-    def batch_infill(
-        self, 
-        batch_query: List[str], 
-        batch_evidence: Optional[List[str]]
-    ) -> List[str]:
-        
-        if not batch_evidence:
-            batch_prompt = [
-                self.get_infilling_prompt(query) for query in batch_query
-            ]
-        else:
-            batch_prompt = [
-                self.get_infilling_prompt(query, evidence) for query, evidence in zip(batch_query, batch_evidence)
-            ]
-            
-        batch_answer = self.batch_generate(batch_prompt, max_new_tokens=32)
-        batch_answer = [
-            answer[len("blank is "):] if answer.lower().startswith("blank is ") else answer
-            for answer in batch_answer
-        ]
-        
-        return batch_answer
     
     
     def parse_boolean_answer(
@@ -141,11 +101,10 @@ class BaseModel(FlanT5):
         evidence: Optional[str] = None
     ) -> str:
         
-        claim = claim.strip().rstrip(".")
         if not evidence:
-            prompt = f"Is it true that '{claim}'? True or false? If it's impossible to say, answer as false.\nAnswer:"
+            prompt = f"Claim: {claim}\nIs the claim true or false?\nAnswer:"
         else:
-            prompt = f"{evidence}\nBased on the above information, is it true that '{claim}'? True or false? If it's impossible to say, answer as false.\nAnswer:"
+            prompt = f"Evidence: {evidence}\nClaim: {claim}\nIs the claim true or false?\nAnswer:"
         
         return prompt
     
@@ -153,7 +112,7 @@ class BaseModel(FlanT5):
     def verify(
         self, 
         claim: str, 
-        evidence: Optional[str]
+        evidence: Optional[str] = None
     ) -> bool:
         
         prompt = self.get_verification_prompt(claim, evidence)
@@ -162,24 +121,28 @@ class BaseModel(FlanT5):
         answer = self.parse_boolean_answer(answer)
         
         return answer
+
     
-    
-    def batch_verify(
+    def get_selector_prompt(
         self, 
-        batch_claim: List[str], 
-        batch_evidence: Optional[List[str]]
-    ) -> List[bool]:
+        claim: str, 
+        evidence: str
+    ) -> str:
         
-        if not batch_evidence:
-            batch_prompt = [
-                self.get_verification_prompt(claim) for claim in batch_claim
-            ]
-        else:            
-            batch_prompt = [
-                self.get_verification_prompt(claim, evidence) for claim, evidence in zip(batch_claim, batch_evidence)
-            ]
+        prompt = f"Evidence: {evidence}\nClaim: {claim}\nDoes the evidence contain sufficient information to support or refute the claim? Yes or no?\nAnswer:"
         
-        batch_answer = self.batch_generate(batch_prompt, max_new_tokens=8)
-        batch_answer = [self.parse_boolean_answer(answer) for answer in batch_answer]
+        return prompt
+
+
+    def strategy_select(
+        self, 
+        claim: str, 
+        evidence: str
+    ) -> bool:
         
-        return batch_answer
+        prompt = self.get_selector_prompt(claim, evidence)
+
+        answer = self.generate(prompt, max_new_tokens=8)
+        answer = self.parse_boolean_answer(answer)
+
+        return answer

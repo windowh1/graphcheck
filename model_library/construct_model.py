@@ -1,8 +1,12 @@
+import anthropic
 import json
 import logging
+from openai import OpenAI
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import *
 from tqdm import tqdm
 
 from model_library.prompt import construction_prompt
@@ -13,20 +17,20 @@ logger = logging.getLogger(__name__)
 class GPT:
     def __init__(
         self, 
-        client: Any, 
-        gpt_model_name: str
+        construct_model_name: str,
+        client: Any
     ):
+        self.construct_model_name = construct_model_name
         self.client = client
-        self.gpt_model_name = gpt_model_name
     
     
     def generate(
         self, 
         user_message: str, 
         system_message: Optional[str] = None, 
-        max_tokens: int = 1024, 
-        temperature: float = 0.0, 
-        top_p: float = 1.0
+        max_tokens: Optional[int] = 1024, 
+        temperature: Optional[float] = 0.0, 
+        top_p: Optional[float] = 1.0
     ) -> str:
         
         if not system_message:
@@ -39,7 +43,7 @@ class GPT:
                 {"role": "user", "content": user_message}
             ]
         response = self.client.chat.completions.create(
-            model=self.gpt_model_name,
+            model=self.construct_model_name,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -83,19 +87,19 @@ class GPT:
         self, 
         user_message_list: List[str], 
         system_message_list: Optional[List[str]] = None, 
-        max_tokens: int = 1024,
-        temperature: float = 0.0, 
-        top_p: float = 1.0
+        max_tokens: Optional[int] = 1024,
+        temperature: Optional[float] = 0.0, 
+        top_p: Optional[float] = 1.0
     ) -> List[str]:
         
         if not system_message_list:
-            open_ai_messages_list = [
+            message_list = [
                 {
                     "custom_id": f"request-{idx + 1}",
                     "method": "POST",
                     "url": "/v1/chat/completions",
                     "body": {
-                        "model": self.gpt_model_name,
+                        "model": self.construct_model_name,
                         "messages": [
                             {"role": "user", "content": user_message}
                         ],
@@ -106,13 +110,13 @@ class GPT:
                 } for idx, user_message in enumerate(user_message_list)
             ]
         else:
-            open_ai_messages_list = [
+            message_list = [
                 {
                     "custom_id": f"request-{idx + 1}",
                     "method": "POST",
                     "url": "/v1/chat/completions",
                     "body": {
-                        "model": self.gpt_model_name,
+                        "model": self.construct_model_name,
                         "messages": [
                             {"role": "system", "content": system_message},
                             {"role": "user", "content": user_message}
@@ -127,7 +131,7 @@ class GPT:
         # Write to a temporary file (in jsonl format)
         jsonl_file = "make_jsonl.jsonl"
         with open(jsonl_file, encoding="utf-8", mode="w") as file:
-            for i in open_ai_messages_list:
+            for i in message_list:
                 file.write(json.dumps(i) + "\n")
         
         # Create the batch
@@ -166,18 +170,119 @@ class GPT:
             raise ValueError(f"No output file generated for batch {batch_id}")
 
 
-class ConstructModel(GPT):
+class Claude:
     def __init__(
         self, 
-        client: Any, 
-        gpt_model_name: str,
-        use_openai_batch_api: bool
-    ):  
-        super().__init__(client, gpt_model_name)
+        construct_model_name: str,
+        client: Any
+    ):
+        self.construct_model_name = construct_model_name
+        self.client = client
+    
+    
+    def generate(
+        self, 
+        user_message: str, 
+        system_message: Optional[str] = None, 
+        max_tokens: Optional[int] = 1024, 
+        temperature: Optional[float] = 0.0, 
+    ) -> str:
         
-        self.gpt_model_name = gpt_model_name
-        self.use_openai_batch_api = use_openai_batch_api
-        self.openai_batch_size = 10
+        if not system_message:
+            system_message = "You are an API that strictly returns only what is requested. Do not add any explanation, greeting, or commentary."
+        
+        messages=[
+            {"role": "user", "content": user_message}
+        ]
+        response = self.client.messages.create(
+            model=self.construct_model_name,
+            messages=messages,
+            system=system_message,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        return response.content[0].text
+
+
+class Qwen:
+    def __init__(
+        self, 
+        model: Any, 
+        tokenizer: Any
+    ):
+        self.model = model
+        self.tokenizer = tokenizer
+    
+    
+    def generate(
+        self, 
+        user_message: str, 
+        system_message: Optional[str] = None, 
+        max_new_tokens: Optional[int] = 1024, 
+    ) -> str:
+        
+        if not system_message:
+            messages = [
+                {"role": "user", "content": user_message}
+            ]
+        else:
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message}
+            ]
+            
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+
+        generated_ids = self.model.generate(
+            **model_inputs,
+            do_sample=False,
+            max_new_tokens=max_new_tokens
+        )
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        
+        return response
+
+
+class ConstructModel():
+    def __init__(
+        self, 
+        construct_model_name: str,
+        api_key: Optional[Any] = None, 
+        cache_dir: Optional[str] = None,
+        batch_size: Optional[int] = 1,
+    ):  
+        
+        if construct_model_name.lower().startswith("gpt"):
+            client = OpenAI(api_key=api_key)
+            self.construct_model = GPT(construct_model_name, client)
+        
+        elif construct_model_name.lower().startswith("claude"):
+            client = anthropic.Anthropic(api_key=api_key)
+            self.construct_model = Claude(construct_model_name, client)
+        
+        elif construct_model_name.lower().startswith("qwen"):
+            model = AutoModelForCausalLM.from_pretrained(
+                construct_model_name,
+                torch_dtype="auto",
+                device_map="auto",
+                cache_dir=cache_dir
+            )
+            tokenizer = AutoTokenizer.from_pretrained(
+                construct_model_name, 
+                cache_dir=cache_dir)
+            self.construct_model = Qwen(model, tokenizer)
+
+        self.batch_size = batch_size        
         self.construction_prompt = construction_prompt
     
     
@@ -194,6 +299,10 @@ class ConstructModel(GPT):
             if not line:
                 continue
             if "no latent entities identified" in line.lower():
+                continue
+            if "(no latent entities needed)" in line.lower():
+                continue
+            if line.lower().strip() == "none":
                 continue
             if line.startswith("# Latent Entities"):
                 continue
@@ -223,10 +332,10 @@ class ConstructModel(GPT):
     def process_sample(
         self,
         sample: Dict[str, Any]
-        ) -> Dict[str, Any]:
+    ) -> Dict[str, Any]:
         
         prompt = self.construction_prompt.replace("<<target_claim>>", sample["claim"])
-        answer = self.generate(prompt)
+        answer = self.construct_model.generate(prompt)
         
         def_triples, triples = self.parse_graph(answer)
         
@@ -241,12 +350,12 @@ class ConstructModel(GPT):
     def process_batch(
         self,
         batch: List[Dict[str, Any]]
-        ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         
         batch_prompt = [
             self.construction_prompt.replace("<<target_claim>>", sample["claim"]) for sample in batch
         ]
-        batch_answer = self.batch_generate(batch_prompt)
+        batch_answer = self.construct_model.batch_generate(batch_prompt)
         
         for sample, answer in zip(batch, batch_answer):
             def_triples, triples = self.parse_graph(answer)
@@ -262,7 +371,7 @@ class ConstructModel(GPT):
         self,
         input_list: List[Dict[str, Any]],
         graph_path: str,
-        force_new_construction: bool = False
+        force_new_construction: Optional[bool] = False
     ) -> List[Dict[str, Any]]:
         
         graph_list = []
@@ -288,15 +397,17 @@ class ConstructModel(GPT):
             logger.info(f"Constructing graphs for {len(input_list)} samples...")
         
         new_count = 0
-        if self.use_openai_batch_api:
-            for i in tqdm(range(0, len(input_list), self.openai_batch_size)):
+
+        # Use OpenAI Batch API
+        if self.batch_size > 1 and isinstance(self.construct_model, GPT): 
+            for i in tqdm(range(0, len(input_list), self.batch_size)):
                 try:
-                    batch = input_list[i : i + self.openai_batch_size]
+                    batch = input_list[i : i + self.batch_size]
                     batch_graph = self.process_batch(batch)
                     graph_list.extend(batch_graph)
                     
                     new_count += len(batch_graph)
-                    if new_count % (self.openai_batch_size * 5) == 0 and new_count < remaining_count:
+                    if new_count % (self.batch_size * 5) == 0 and new_count < remaining_count:
                         graph_list = sorted(graph_list, key=lambda x: x["index"])
                         with open(graph_path, "w") as f:
                             json.dump(graph_list, f, indent=4)
@@ -311,7 +422,7 @@ class ConstructModel(GPT):
                     graph_list.append(graph)
                     
                     new_count += 1
-                    if new_count % 50 == 0 and new_count < remaining_count:
+                    if new_count % 10 == 0 and new_count < remaining_count:
                         graph_list = sorted(graph_list, key=lambda x: x["index"])
                         with open(graph_path, "w") as f:
                             json.dump(graph_list, f, indent=4)
@@ -328,5 +439,13 @@ class ConstructModel(GPT):
             logger.info(f"Graphs saved at '{graph_path}'")
         
         graph_list = [sample for sample in graph_list if sample["index"] in input_indices]
+
+        if isinstance(self.construct_model, Qwen):
+            try:
+                del self.construct_model
+                torch.cuda.empty_cache()
+                logger.info("Released construct_model from GPU memory.")
+            except Exception as e:
+                logger.warning(f"Failed to release construct_model from memory: {e}")
         
         return graph_list

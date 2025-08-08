@@ -48,14 +48,14 @@ python graphcheck.py \
 
 #### **Note:**
 
-We provide the pre-constructed graph list in the `results` folder, so you do **not** need to rebuild the graph. However, if you wish to construct graphs from scratch, use the following command **with your OpenAI API key**:
+We provide the pre-constructed graph list in the `results` folder, so you do **not** have to rebuild the graph. However, if you wish to construct graphs from scratch, use the following command **with your OpenAI API key**:
 
 ```bash
 python graphcheck.py \
     --dataset hover \
     --input_filename dev.json \
     --force_new_construction \
-    --openai_api_key YOUR_OPENAI_API_KEY
+    --api_key YOUR_OPENAI_API_KEY
 ```
 
 Note that using the OpenAI API incurs costs. We also provide an option to use the **OpenAI Batch API**, which can reduce costs by **50%**, though it may slow down graph construction.
@@ -65,8 +65,8 @@ python graphcheck.py \
     --dataset hover \
     --input_filename dev.json \
     --force_new_construction \
-    --openai_api_key YOUR_OPENAI_API_KEY \
-    --use_openai_batch_api
+    --api_key YOUR_OPENAI_API_KEY \
+    --construct_batch_size YOUR_BATCH_SIZE
 ```
 
 ### **Running DP-GraphCheck**
@@ -86,7 +86,7 @@ python dp_graphcheck.py \
     --dataset hover \
     --input_filename dev.json \
     --force_new_construction \
-    --openai_api_key YOUR_OPENAI_API_KEY
+    --api_key YOUR_OPENAI_API_KEY
 ```
 
 For cost-efficient graph reconstruction:
@@ -96,48 +96,6 @@ python dp_graphcheck.py \
     --dataset hover \
     --input_filename dev.json \
     --force_new_construction \
-    --openai_api_key YOUR_OPENAI_API_KEY \
-    --use_openai_batch_api
-```
-
----
-
-## **Experiments on EX-FEVER (Aly et al., 2021)**
-
-Similar steps apply for **EX-FEVER** dataset.
-
-#### **Note:**
-
-As mentioned in our paper, we provide a modified version of the **EX-FEVER dataset** in `datasets/ex-fever/claims/`, where the original **Not Enough Information (NEI)** label has been removed, leaving only `SUPPORTED` or `NOT SUPPORTED` labels.
-
-### **Build BM25 Index**
-
-```bash
-sh prepare_ex-fever.sh
-```
-
-### **Running Experiments on Test Set**
-
-To run **Direct**:
-
-```bash
-python direct.py \
-    --dataset ex-fever \
-    --input_filename test_nei_x.json
-```
-
-To run **GraphCheck**:
-
-```bash
-python graphcheck.py \
-    --dataset ex-fever \
-    --input_filename test_nei_x.json
-```
-
-To run **DP-GraphCheck**:
-
-```bash
-python dp_graphcheck.py \
-    --dataset ex-fever \
-    --input_filename test_nei_x.json
+    --api_key YOUR_OPENAI_API_KEY \
+    --construct_batch_size YOUR_BATCH_SIZE
 ```

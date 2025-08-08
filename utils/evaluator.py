@@ -4,6 +4,7 @@ import json
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 from typing import List, Optional, TextIO
+from typing import *
 
 
 def parse_args(

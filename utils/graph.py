@@ -4,9 +4,10 @@ import logging
 import numpy as np
 import random
 import re
-from typing import List, DefaultDict, Dict, Optional, Tuple
+from typing import *
 
 logger = logging.getLogger(__name__)
+random.seed(26)
 
 
 class Triple:
