@@ -1,8 +1,6 @@
-# GraphCheck: Multi-Path Fact-Checking with Entity-Relationship Graphs
+# GraphCheck: Multipath Fact-Checking with Entity-Relationship Graphs
 
-GraphCheck is a fact-checking framework that leverages entity-relation graphs to perform multi-path reasoning for claim verification. This repository includes code, data, and instructions to reproduce the results from our paper, [GraphCheck: Multi-Path Fact-Checking with Entity-Relationship Graphs (Jeon et al., 2025)](https://arxiv.org/abs/2502.20785)
-
-This repository contains the source code for .
+GraphCheck is a fact-checking framework that leverages entity-relation graphs to perform multi-path reasoning for claim verification. This repository includes code, data, and instructions to reproduce the results from our paper, [GraphCheck: Multipath Fact-Checking with Entity-Relationship Graphs (Jeon et al., 2025)](https://aclanthology.org/2025.findings-emnlp.1345/).
 
 ## **Setup Virtual Environment**
 
@@ -16,19 +14,25 @@ pip install -r requirements.txt
 
 ---
 
-## **Experiments on HOVER (Jiang et al., 2020)**
+## **Experiments**
 
 ### **Build BM25 Index**
 
-Before running experiments, prepare the BM25 index using:
+Before running experiments, prepare the BM25 index for **HOVER (Jiang et al., 2020)** using:
 
 ```bash
 sh prepare_hover.sh
 ```
 
+For **EX-FEVER (Ma et al., 2024)**:
+
+```bash
+sh prepare_ex-fever.sh
+```
+
 ### **Running Direct**
 
-To run Direct on the **hover dev set**:
+To run Direct on the **HOVER dev set**:
 
 ```bash
 python direct.py \
@@ -38,7 +42,7 @@ python direct.py \
 
 ### **Running GraphCheck**
 
-To run **GraphCheck** on the **hover dev set**:
+To run **GraphCheck**:
 
 ```bash
 python graphcheck.py \
