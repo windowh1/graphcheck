@@ -28,7 +28,7 @@ sh prepare_hover.sh
 
 ### **Running Direct**
 
-To run Direct on the **dev set**:
+To run Direct on the **hover dev set**:
 
 ```bash
 python direct.py \
@@ -38,7 +38,7 @@ python direct.py \
 
 ### **Running GraphCheck**
 
-To run **GraphCheck** on the **dev set**:
+To run **GraphCheck** on the **hover dev set**:
 
 ```bash
 python graphcheck.py \
